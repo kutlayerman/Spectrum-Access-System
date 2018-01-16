@@ -124,6 +124,8 @@ class FakeSas(sas_interface.SasInterface):
 
   def Grant(self, request, ssl_cert=None, ssl_key=None):
     response = {'grantResponse': []}
+    grant_expire_time = datetime.utcnow().replace(
+          microsecond=0) + timedelta(minutes=1)
     for req in request['grantRequest']:
       if ('cbsdId' not in req) :
         response['grantResponse'].append({
@@ -140,6 +142,7 @@ class FakeSas(sas_interface.SasInterface):
           response['grantResponse'].append({
             'cbsdId': req['cbsdId'],
             'grantId': 'fake_grant_id_%s' % datetime.utcnow().isoformat(),
+            'grantExpireTime': grant_expire_time.isoformat() + 'Z',
             'channelType': 'GAA',
             'response': self._GetSuccessResponse()
           })
@@ -150,10 +153,13 @@ class FakeSas(sas_interface.SasInterface):
     for req in request['heartbeatRequest']:
       transmit_expire_time = datetime.utcnow().replace(
           microsecond=0) + timedelta(minutes=1)
+      grant_expire_time = datetime.utcnow().replace(
+          microsecond=0) + timedelta(minutes=1)
       response['heartbeatResponse'].append({
           'cbsdId': req['cbsdId'],
           'grantId': req['grantId'],
           'transmitExpireTime': transmit_expire_time.isoformat() + 'Z',
+          'grantExpireTime': grant_expire_time.isoformat() + 'Z',
           'response': self._GetSuccessResponse()
       })
     return response
@@ -329,6 +335,8 @@ class FakeSasAdmin(sas_interface.SasAdminInterface):
   def InjectPeerSas(self, request):
     pass
 
+  def InjectDatabase_url(self, request):
+    pass
 
 class FakeSasHandler(BaseHTTPRequestHandler):
   @classmethod
@@ -386,6 +394,7 @@ class FakeSasHandler(BaseHTTPRequestHandler):
                        '/admin/trigger/bulk_dpa_activation',
                        '/admin/trigger/create_full_activity_dump',
                        '/admin/injectdata/peer_sas'):
+                       '/admin/injectdata/database_url'):
       response = ''
     else:
       self.send_response(404)
