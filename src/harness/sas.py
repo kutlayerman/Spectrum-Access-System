@@ -100,6 +100,10 @@ def _Request(url, request, config, is_post_method):
   conn.setopt(conn.CAINFO, config.ca_cert)
   conn.setopt(conn.HTTPHEADER, header)
   conn.setopt(conn.SSL_CIPHER_LIST, ':'.join(config.ciphers))
+  conn.setopt(conn.POST, True)
+  request = json.dumps(request) if request else ''
+  logging.info('Request to URL ' + url + ':\n' + request)
+  conn.setopt(conn.POSTFIELDS, request)
   conn.setopt(conn.TIMEOUT, HTTP_TIMEOUT_SECS)
   request = json.dumps(request) if request else ''
   if is_post_method:
@@ -122,6 +126,41 @@ def _Request(url, request, config, is_post_method):
   if body:
     return json.loads(body)
 
+
+def _RequestGet(url, config):
+  """Sends HTTPS GET request.
+
+  Args:
+    url: Destination of the HTTPS request.
+    config: a |TlsConfig| object defining the TLS/HTTPS configuration.
+  Returns:
+    A dictionary represents the JSON response received from server.
+  """
+  response = StringIO.StringIO()
+  conn = pycurl.Curl()
+  conn.setopt(conn.URL, url)
+  conn.setopt(conn.WRITEFUNCTION, response.write)
+  header = [
+      'Host: %s' % urlparse.urlparse(url).hostname,
+      'content-type: application/json'
+  ]
+  conn.setopt(conn.VERBOSE, 3  # Improve readability.
+              if logging.getLogger().isEnabledFor(logging.DEBUG) else False)
+  conn.setopt(conn.SSLVERSION, config.ssl_version)
+  conn.setopt(conn.SSLCERTTYPE, 'PEM')
+  conn.setopt(conn.SSLCERT, config.client_cert)
+  conn.setopt(conn.SSLKEY, config.client_key)
+  conn.setopt(conn.CAINFO, config.ca_cert)
+  conn.setopt(conn.HTTPHEADER, header)
+  conn.setopt(conn.SSL_CIPHER_LIST, ':'.join(config.ciphers))
+  logging.info('Request to URL ' + url)
+  conn.setopt(conn.TIMEOUT, HTTP_TIMEOUT_SECS)
+  conn.perform()
+  assert conn.getinfo(pycurl.HTTP_CODE) == 200, conn.getinfo(pycurl.HTTP_CODE)
+  conn.close()
+  body = response.getvalue()
+  logging.info('Response:\n' + body)
+  return json.loads(body)
 
 class SasImpl(sas_interface.SasInterface):
   """Implementation of SasInterface for SAS certification testing."""
@@ -348,6 +387,5 @@ class SasAdminImpl(sas_interface.SasAdminInterface):
     _RequestPost('https://%s/admin/injectdata/peer_sas' %
                  self._base_url, request, self._tls_config)
   
-  def InjectDatabase_url(self, request):
-    _RequestPost('https://%s/admin/injectdata/database_url' % self._base_url,
-                 request, self._tls_config)
+  def InjectDatabaseUrl(self, request):
+    _RequestPost('https://%s/admin/injectdata/database_url' % self._base_url,request, self._tls_config)
