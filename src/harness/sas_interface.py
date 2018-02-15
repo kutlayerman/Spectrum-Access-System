@@ -490,11 +490,11 @@ class SasAdminInterface(object):
 
   @abc.abstractmethod
   def InjectDatabaseUrl(self, request):
-    """Injecting database url"""
+    """Inject the FCC Database URL into SAS."""
     pass
 
 class SasTestcaseInterface(object):
-  """Includes Helper Function interface for SAS-CBSD and SAS-SAS Testcases"""
+  """Includes Helper Function interface for SAS-CBSD and SAS-SAS Testcases."""
 
   __metaclass__ = abc.ABCMeta
 
