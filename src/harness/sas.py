@@ -175,9 +175,11 @@ class SasImpl(sas_interface.SasInterface):
                             ssl_key or self._GetDefaultCbsdSSLKeyPath()))
 
   def DownloadFile(self, url, ssl_cert=None, ssl_key=None):
-    return self._DownloadFile('%s' % url,
-                 self._tls_config.WithClientCertificate(ssl_cert if ssl_cert else self._GetDefaultSasSSLCertPath(),
-                 ssl_key if ssl_key else self._GetDefaultSasSSLKeyPath()))
+    return self._DownloadFile(
+        '%s' % url,
+        self._tls_config.WithClientCertificate(
+          ssl_cert if ssl_cert else self._GetDefaultSasSSLCertPath(),
+          ssl_key if ssl_key else self._GetDefaultSasSSLKeyPath()))
     
   def _GetDefaultCbsdSSLCertPath(self):
     return os.path.join('certs', 'client.cert')
@@ -216,6 +218,7 @@ class SasImpl(sas_interface.SasInterface):
     body = response.getvalue()
     logging.debug('Response:\n' + body)
     return json.loads(body)
+
 
 class SasAdminImpl(sas_interface.SasAdminInterface):
   """Implementation of SasAdminInterface for SAS certification testing."""
@@ -343,6 +346,10 @@ class SasAdminImpl(sas_interface.SasAdminInterface):
 
   def _GetDefaultAdminSSLKeyPath(self):
     return os.path.join('certs', 'admin_client.key')
+
+  def InjectDatabaseUrl(self, request):
+    _RequestPost('https://%s/admin/injectdata/database_url' %
+                 self._base_url, request, self._tls_config)
 
   def InjectPeerSas(self, request):
     _RequestPost('https://%s/admin/injectdata/peer_sas' %

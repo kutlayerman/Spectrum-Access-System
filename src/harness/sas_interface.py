@@ -158,9 +158,9 @@ class SasInterface(object):
   @abc.abstractmethod
   def GetSasImplementationRecord(self, request, ssl_cert=None, ssl_key=None):
     """SAS-SAS Implementation Record Exchange interface
-    
+
     Requests a Pull Command to get the Sas Implementation Record
-    
+
     Args:
       request: A string containing Sas Implementation Record Id
       ssl_cert: Path to SSL cert file, if None, will use default cert file.
@@ -487,6 +487,11 @@ class SasAdminInterface(object):
         "certificateHash": the sha1 fingerprint of the certificate
         "url": base URL of the peer SAS.
     """
+    pass
+
+  @abc.abstractmethod
+  def InjectDatabaseUrl(self, request):
+    """Inject the Database URL into SAS."""
     pass
 
 class SasTestcaseInterface(object):
