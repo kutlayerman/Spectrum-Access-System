@@ -55,65 +55,62 @@ terrainDriver = wf_itm.terrainDriver
 
 # Set constant parameters based on requirements in the WINNF-TS-0112
 # [R2-SGN-16]
-GWPZ_NBRHD_DIST = 40  # neighborhood distance from a CBSD to a given protection
+GWPZ_NEIGHBORHOOD_DIST = 40  # neighborhood distance from a CBSD to a given protection
 # point (in km) in GWPZ protection area
-PPA_NBRHD_DIST = 40  # neighborhood distance from a CBSD to a given protection
+PPA_NEIGHBORHOOD_DIST = 40  # neighborhood distance from a CBSD to a given protection
 # point (in km) in PPA protection area
 
-FSS_CO_CHANNEL_NBRHD_DIST = 150  # neighborhood distance from a CBSD to FSS for
+FSS_CO_CHANNEL_NEIGHBORHOOD_DIST = 150  # neighborhood distance from a CBSD to FSS for
 # co-channel protection
 
-FSS_BLOCKING_NBRHD_DIST = 40  # neighborhood distance from a CBSD to FSS
+FSS_BLOCKING_NEIGHBORHOOD_DIST = 40  # neighborhood distance from a CBSD to FSS
 # blocking protection
 
-ESC_NBRHD_DIST_A = 40  # neighborhood distance from a ESC to category A CBSD
+ESC_NEIGHBORHOOD_DIST_A = 40  # neighborhood distance from a ESC to category A CBSD
 
-ESC_NBRHD_DIST_B = 80  # neighborhood distance from a ESC to category B CBSD
+ESC_NEIGHBORHOOD_DIST_B = 80  # neighborhood distance from a ESC to category B CBSD
 
 NUM_OF_PROCESSES = 6
 
 # Frequency used in propagation model (in MHz) [R2-SGN-04]
-FREQ_PROP_MODEL = 3625.0
+FREQ_PROP_MODEL_MHZ = 3625.0
 
 # CBRS Band Frequency Range (Hz)
-CBRS_LOW_FREQ = 3550.e6
-CBRS_HIGH_FREQ = 3700.e6
+CBRS_LOW_FREQ_HZ = 3550.e6
+CBRS_HIGH_FREQ_HZ = 3700.e6
 
 # FSS Passband low frequency range  (Hz)
-FSS_LOW_FREQ = 3600.e6
+FSS_LOW_FREQ_HZ = 3600.e6
 
 # FSS Passband for TT&C (Hz)
-FSS_TTC_LOW_FREQ = 3700.e6
-FSS_TTC_HIGH_FREQ = 4200.e6
+FSS_TTC_LOW_FREQ_HZ = 3700.e6
+FSS_TTC_HIGH_FREQ_HZ = 4200.e6
 
-# ESC IAP for Out-of-Band Categoroy A CBSDs in Frequency Range (Hz)
-ESC_CAT_A_LOW_FREQ = 3550.e6
-ESC_CAT_A_HIGH_FREQ = 3660.e6
+# ESC IAP for Out-of-Band Category A CBSDs in Frequency Range (Hz)
+ESC_CAT_A_LOW_FREQ_HZ = 3550.e6
+ESC_CAT_A_HIGH_FREQ_HZ = 3660.e6
 
-# ESC IAP for Out-of-Band Categoroy B CBSDs in Frequency Range (Hz)
-ESC_CAT_B_LOW_FREQ = 3550.e6
-ESC_CAT_B_HIGH_FREQ = 3680.e6
+# ESC IAP for Out-of-Band Category B CBSDs in Frequency Range (Hz)
+ESC_CAT_B_LOW_FREQ_HZ = 3550.e6
+ESC_CAT_B_HIGH_FREQ_HZ = 3680.e6
 
 # ESC Channel 21 Center Frequency
-ESC_CH21_CF = 36525.e5
+ESC_CH21_CF_HZ = 36525.e5
 
 # One Mega Hertz
 ONE_MHZ = 1.e6
 
 # Channel bandwidth over which SASs execute the IAP process
-IAPBW = 5.e6
+IAPBW_HZ = 5.e6
 
 # GWPZ Area Protection reference bandwidth for the IAP process
-GWPZ_RBW = 10.e6
+GWPZ_RBW_HZ = 10.e6
 
 # PPA Area Protection reference bandwidth for the IAP process
-PPA_RBW = 10.e6
+PPA_RBW_HZ = 10.e6
 
 # GWPZ and PPA height (m)
 GWPZ_PPA_HEIGHT = 1.5
-
-# Number of SASs - NSAS
-NUM_SAS = 3
 
 # Global grant counter
 grant_counter = 0
@@ -121,12 +118,12 @@ grant_counter = 0
 # In-band insertion loss
 IN_BAND_INSERTION_LOSS = 0.5
 
-# Define an enumeration class named ProtectionEntityType with members
+# Define an enumeration class named ProtectedEntityType with members
 # 'GWPZ_AREA', 'PPA_AREA', 'FSS_CO_CHANNEL', 'FSS_BLOCKING', 'ESC_CAT_A'
 # 'ESC_CAT_B'
 
 
-class ProtectionEntityType(Enum):
+class ProtectedEntityType(Enum):
   GWPZ_AREA = 1
   PPA_AREA = 2
   FSS_CO_CHANNEL = 3
@@ -173,33 +170,45 @@ def linearToDb(x):
   """This function returns mW to dBm converted value"""
   return 10 * np.log10(x)
 
-def performChannelization(low_freq, high_freq):
-  """This function performs 5MHz channelization """
+def performChannelization(low_freq_mhz, high_freq_mhz):
+  """This function performs 5MHz channelization
+
+  Utility API to perform 5MHz channelization on protected entity 
+  frequency range 
+
+  Args:
+    low_freq_mhz: Low frequency of the protected entity(MHz).
+    high_freq_mhz: High frequency of the protected entity(MHz)
+  Returns:
+    An array of protected channel frequency range tuple 
+    (low_freq_hz,high_freq_hz)
+  """
+
   protection_channels = []
-  while (low_freq < high_freq):
-    ch_low_freq = low_freq
-    ch_high_freq = low_freq + 5
+  while (low_freq_mhz < high_freq_mhz):
+    ch_low_freq = low_freq_mhz
+    ch_high_freq = low_freq_mhz + 5
     protection_channels.append((ch_low_freq * ONE_MHZ, ch_high_freq * ONE_MHZ))
-    low_freq = low_freq + 5
+    low_freq_mhz = low_freq_mhz + 5
   return protection_channels
 
-def getProtectedChannels(low_freq, high_freq):
+def getProtectedChannels(low_freq_hz, high_freq_hz):
   """Gets protected channels list 
 
   Performs 5MHz IAP channelization and returns a list of tuple containing 
   (low_freq,high_freq)
 
   Args:
-    low_freq: Low frequency of the protected entity(Hz).
-    high_freq: High frequency of the protected entity(Hz)
+    low_freq_hz: Low frequency of the protected entity(Hz).
+    high_freq_hz: High frequency of the protected entity(Hz)
   Returns:
     An array of protected channel frequency range tuple 
-    (low_freq,high_freq).
+    (low_freq_hz,high_freq_hz). 
   """
-  low_freq = low_freq / ONE_MHZ 
-  high_freq = high_freq / ONE_MHZ
-  
-  assert low_freq < high_freq, 'Low frequency is greater than high frequency'
+  assert low_freq_hz < high_freq_hz, 'Low frequency is greater than high frequency'
+
+  low_freq = low_freq_hz / ONE_MHZ 
+  high_freq = high_freq_hz / ONE_MHZ
 
   if low_freq >= 3550 and low_freq <= 3700:
     if high_freq <= 3700:
@@ -240,38 +249,38 @@ def findOverlappingGrantsInsideNeighborhood(grants, constraint):
                       grant.longitude, constraint.latitude, constraint.longitude)
 
     # Check if CBSD is inside the neighborhood of protection constraint
-    cbsd_in_nbrhd = False
+    cbsd_in_nieghborhood = False
 
-    if constraint.entity_type is ProtectionEntityType.GWPZ_AREA:
-      if dist_km <= GWPZ_NBRHD_DIST:
-        cbsd_in_nbrhd = True
+    if constraint.entity_type is ProtectedEntityType.GWPZ_AREA:
+      if dist_km <= GWPZ_NEIGHBORHOOD_DIST:
+        cbsd_in_nieghborhood = True
 
-    elif constraint.entity_type is ProtectionEntityType.PPA_AREA:
-      if dist_km <= PPA_NBRHD_DIST:
-        cbsd_in_nbrhd = True
+    elif constraint.entity_type is ProtectedEntityType.PPA_AREA:
+      if dist_km <= PPA_NEIGHBORHOOD_DIST:
+        cbsd_in_nieghborhood = True
 
-    elif constraint.entity_type is ProtectionEntityType.FSS_CO_CHANNEL:
-      if dist_km <= FSS_CO_CHANNEL_NBRHD_DIST:
-        cbsd_in_nbrhd = True
+    elif constraint.entity_type is ProtectedEntityType.FSS_CO_CHANNEL:
+      if dist_km <= FSS_CO_CHANNEL_NEIGHBORHOOD_DIST:
+        cbsd_in_nieghborhood = True
 
-    elif constraint.entity_type is ProtectionEntityType.FSS_BLOCKING:
-      if dist_km <= FSS_BLOCKING_NBRHD_DIST:
-        cbsd_in_nbrhd = True
+    elif constraint.entity_type is ProtectedEntityType.FSS_BLOCKING:
+      if dist_km <= FSS_BLOCKING_NEIGHBORHOOD_DIST:
+        cbsd_in_nieghborhood = True
 
-    elif constraint.entity_type is ProtectionEntityType.ESC_CAT_A:
+    elif constraint.entity_type is ProtectedEntityType.ESC_CAT_A:
       if grant.cbsd_category == 'A':
-        if dist_km <= ESC_NBRHD_DIST_A:
-          cbsd_in_nbrhd = True
+        if dist_km <= ESC_NEIGHBORHOOD_DIST_A:
+          cbsd_in_nieghborhood = True
 
-    elif constraint.entity_type is ProtectionEntityType.ESC_CAT_B:
+    elif constraint.entity_type is ProtectedEntityType.ESC_CAT_B:
       if grant.cbsd_category == 'B':
-        if dist_km <= ESC_NBRHD_DIST_B:
-          cbsd_in_nbrhd = True
+        if dist_km <= ESC_NEIGHBORHOOD_DIST_B:
+          cbsd_in_nieghborhood = True
 
     else:
       raise ValueError('Unknown protection entity type %s' % constraint.entity_type)
 
-    if cbsd_in_nbrhd:
+    if cbsd_in_nieghborhood:
       # Check frequency range
       overlapping_bw = min(grant.high_frequency, constraint.high_frequency) \
                           - max(grant.low_frequency, constraint.low_frequency)
@@ -298,7 +307,9 @@ def getAllGrantInformationFromCbsdDataDump(cbsd_data_records,
                      peer SAS
                      True - Managing SAS, False - Peer SAS
   Returns:
-    grant_objects: List of CBSD grant objects
+    grant_objects: a list of grants, each one being a namedtuple of type 
+                   CBSDGrantInformation, of all CBSDs from SAS UUT FAD and 
+                   SAS Test Harness FAD
   """
 
   grant_objects = []
@@ -375,7 +386,7 @@ def computeInterferencePpaGwpzPoint(cbsd_grant, constraint, h_inc_ant,
                                    constraint.longitude, h_inc_ant,
                                    cbsd_grant.indoor_deployment,
                                    reliability=-1, 
-                                   freq_mhz=FREQ_PROP_MODEL,
+                                   freq_mhz=FREQ_PROP_MODEL_MHZ,
                                    region=region)
 
   # Compute CBSD antenna gain in the direction of protection point
@@ -411,7 +422,7 @@ def computeInterferenceEsc(cbsd_grant, constraint, esc_antenna_info, max_eirp):
                                    constraint.latitude, constraint.longitude, 
                                    esc_antenna_info.antenna_height,
                                    cbsd_grant.indoor_deployment, reliability=-1,
-                                   freq_mhz=FREQ_PROP_MODEL)
+                                   freq_mhz=FREQ_PROP_MODEL_MHZ)
 
   # Compute CBSD antenna gain in the direction of protection point
   ant_gain = antenna.GetStandardAntennaGains(incidence_angles.hor_cbsd,
@@ -454,7 +465,7 @@ def computeInterferenceFss(cbsd_grant, constraint, fss_info, max_eirp):
                                    cbsd_grant.longitude, cbsd_grant.height_agl, 
                                    constraint.latitude, constraint.longitude, 
                                    fss_info.antenna_height, cbsd_grant.indoor_deployment, 
-                                   reliability=-1, freq_mhz=FREQ_PROP_MODEL)
+                                   reliability=-1, freq_mhz=FREQ_PROP_MODEL_MHZ)
 
   # Compute CBSD antenna gain in the direction of protection point
   ant_gain = antenna.GetStandardAntennaGains(incidence_angles.hor_cbsd,
@@ -500,7 +511,7 @@ def computeInterferenceFssBlocking(cbsd_grant, constraint, fss_info, max_eirp):
                                    cbsd_grant.height_agl, constraint.latitude,
                                    constraint.longitude, fss_info.antenna_height,
                                    cbsd_grant.indoor_deployment, reliability=-1,
-                                   freq_mhz=FREQ_PROP_MODEL)
+                                   freq_mhz=FREQ_PROP_MODEL_MHZ)
 
   # Compute CBSD antenna gain in the direction of protection point
   ant_gain = antenna.GetStandardAntennaGains(incidence_angles.hor_cbsd,
@@ -564,7 +575,7 @@ def computeInterferenceFssBlocking(cbsd_grant, constraint, fss_info, max_eirp):
 
 
 def calculateInterference(max_eirp, cbsd_ant_gain, entity_ant_gain, 
-                          db_loss, area, reference_bandwidth=IAPBW):
+                          db_loss, area, reference_bandwidth=IAPBW_HZ):
   """Calculate interference caused by a grant 
   
   Utility API to calculate interference caused by a grant in the 
