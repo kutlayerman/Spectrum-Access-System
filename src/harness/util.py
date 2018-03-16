@@ -20,12 +20,10 @@ import inspect
 import json
 from jsonschema import validate, Draft4Validator, RefResolver
 import logging
-import numpy as np
 import os
 import sys
 import time
 import random
-import sys
 import uuid
 import jwt
 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
@@ -51,15 +49,15 @@ def _log_testcase_header(name, doc):
 
 
 def winnforum_testcase(testcase):
-    """Decorator for common features (e.g. logging) for WinnForum test cases."""
-    def decorated_testcase(*args, **kwargs):
-        assert testcase, ('Avoid using @winnforum_testcase with '
-                          '@configurable_testcase')
+  """Decorator for common features (e.g. logging) for WinnForum test cases."""
+  def decorated_testcase(*args, **kwargs):
+    assert testcase, ('Avoid using @winnforum_testcase with '
+                      '@configurable_testcase')
 
-        _log_testcase_header(testcase.__name__, testcase.__doc__)
-        testcase(*args, **kwargs)
+    _log_testcase_header(testcase.__name__, testcase.__doc__)
+    testcase(*args, **kwargs)
 
-    return decorated_testcase
+  return decorated_testcase
 
 
 def configurable_testcase(default_config_function):
@@ -116,20 +114,20 @@ def configurable_testcase(default_config_function):
 
 
 def loadConfig(config_filename):
-    """Loads a configuration file."""
-    with open(config_filename, 'r') as f:
-        return json.loads(f.read())
+  """Loads a configuration file."""
+  with open(config_filename, 'r') as f:
+    return json.loads(f.read())
 
 
 def writeConfig(config_filename, config):
-    """Writes a configuration file."""
-    dir_name = os.path.dirname(config_filename)
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
+  """Writes a configuration file."""
+  dir_name = os.path.dirname(config_filename)
+  if not os.path.exists(dir_name):
+    os.makedirs(dir_name)
 
-    with open(config_filename, 'w') as f:
-        f.write(
-            json.dumps(config, indent=2, sort_keys=False, separators=(',', ': ')))
+  with open(config_filename, 'w') as f:
+    f.write(
+        json.dumps(config, indent=2, sort_keys=False, separators=(',', ': ')))
 
 
 def getRandomLatLongInPolygon(ppa):
@@ -272,21 +270,21 @@ def assertContainsRequiredFields(schema_filename, response):
 
 
 def generateCpiRsaKeys():
-    """Generate a private/public RSA 2048 key pair.
+  """Generate a private/public RSA 2048 key pair.
 
-    Returns:
-      A tuple (private_key, public key) as PEM string encoded.
-    """
-    rsa_key = rsa.generate_private_key(
-        public_exponent=65537, key_size=2048, backend=default_backend())
-    rsa_private_key = rsa_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption())
-    rsa_public_key = rsa_key.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo)
-    return rsa_private_key, rsa_public_key
+  Returns:
+    A tuple (private_key, public key) as PEM string encoded.
+  """
+  rsa_key = rsa.generate_private_key(
+      public_exponent=65537, key_size=2048, backend=default_backend())
+  rsa_private_key = rsa_key.private_bytes(
+      encoding=serialization.Encoding.PEM,
+      format=serialization.PrivateFormat.TraditionalOpenSSL,
+      encryption_algorithm=serialization.NoEncryption())
+  rsa_public_key = rsa_key.public_key().public_bytes(
+      encoding=serialization.Encoding.PEM,
+      format=serialization.PublicFormat.SubjectPublicKeyInfo)
+  return rsa_private_key, rsa_public_key
 
 
 def generateCpiEcKeys():
@@ -338,49 +336,6 @@ def convertRequestToRequestWithCpiSignature(private_key, cpi_id,
   request['cpiSignatureData']['protectedHeader'] = jwt_message[0]
   request['cpiSignatureData']['encodedCpiSignedData'] = jwt_message[1]
   request['cpiSignatureData']['digitalSignature'] = jwt_message[2]
-
-
-def getFUGPoints(ppa):
-    """This function returns FUG points list
-    Args:
-      ppa: (dictionary) A dictionary containing PPA/GWPZ Record.
-    Returns:
-      An array of tuple (lat, lng).
-    """
-    fug_points = []
-    ppa_polygon = shape(ppa[0]['zone']['features'][0]['geometry'])
-    min_lng, min_lat, max_lng, max_lat = ppa_polygon.bounds
-    upper_boundary_lng = np.ceil(max_lng)
-    lower_boundary_lng = np.floor(min_lng)
-    upper_boundary_lat = np.ceil(max_lat)
-    lower_boundary_lat = np.floor(min_lat)
-    while(upper_boundary_lat >= lower_boundary_lat):
-        while(upper_boundary_lng >= lower_boundary_lng):
-            pointLat = round(upper_boundary_lat, 6)
-            pointLng = round(upper_boundary_lng, 6)
-            if Point([pointLng, pointLat]).within(ppa_polygon):
-                fug_points.append((pointLat, pointLng))
-            upper_boundary_lng = upper_boundary_lng - 2.0 / 3600
-        upper_boundary_lat = upper_boundary_lat - 2.0 / 3600
-        upper_boundary_lng = max_lng + 2.0 / 3600
-    return fug_points
-
-
-def getChannels(lowFrequency, highFrequency):
-    """This function returns protected channels list"""
-    protection_channels = []
-    startFrequency = 3550
-    channel = 0
-    while channel < 30:
-        if ((startFrequency+channel*5 < lowFrequency/1000000 and startFrequency + (channel+1)*5 > lowFrequency/1000000)
-                or (startFrequency+channel*5 >= lowFrequency/1000000 and startFrequency + (channel+1)*5 <= highFrequency/1000000)
-                or (startFrequency+channel*5 < highFrequency/1000000 and startFrequency + (channel+1)*5 > highFrequency/1000000)):
-            ch_low_freq = (startFrequency * 1000000) + (channel * 5000000)
-            ch_high_freq = ch_low_freq + 5000000     
-            protection_channels.append((ch_low_freq, ch_high_freq))
-        channel = channel + 1
-    return protection_channels
-
 
 def addIdsToRequests(ids, requests, id_field_name):
   """Adds CBSD IDs or Grant IDs to any given request.
