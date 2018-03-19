@@ -37,11 +37,9 @@
 """
 import numpy as np
 from reference_models.antenna import antenna
-from reference_models.antenna import fss_pointing
 from reference_models.geo import vincenty
 from reference_models.propagation import wf_itm
 from reference_models.propagation import wf_hybrid
-from reference_models.examples import entities, example_fss_interference
 from collections import namedtuple
 from enum import Enum
 from shapely.geometry import Point as SPoint
@@ -70,7 +68,7 @@ ESC_NEIGHBORHOOD_DIST_A = 40  # neighborhood distance from a ESC to category A C
 
 ESC_NEIGHBORHOOD_DIST_B = 80  # neighborhood distance from a ESC to category B CBSD
 
-NUM_OF_PROCESSES = 6
+NUM_OF_PROCESSES = 9
 
 # Frequency used in propagation model (in MHz) [R2-SGN-04]
 FREQ_PROP_MODEL_MHZ = 3625.0
@@ -149,12 +147,15 @@ ProtectionConstraint = namedtuple('ProtectionConstraint',
                                   ['latitude', 'longitude', 'low_frequency',
                                    'high_frequency', 'entity_type'])
 
-# Define FSS information, i.e., a tuple with named fields of
-# 'fss_entities', 'antenna_height', 'weight1', 'weight2'
-FssInformation = namedtuple('FssInformation',
-                                  ['antenna_height', 'antenna_azimuth',
-                                   'antenna_elevation', 'antenna_gain',
-                                   'weight1', 'weight2'])
+# Define FSS Protection Point, i.e., a tuple with named fields of
+# 'latitude', 'longitude', 'height_agl', 'max_gain_dbi', 'pointing_azimuth',
+# 'pointing_elevation', 'weight_1', 'weight_2'
+FssProtectionPoint = namedtuple('FssProtectionPoint',
+                                   ['latitude', 'longitude',
+                                    'height_agl', 'max_gain_dbi',
+                                    'pointing_azimuth', 'pointing_elevation',
+                                    'weight_1', 'weight_2'])
+
 
 # Define ESC information, i.e., a tuple with named fields of
 # 'antenna_height', 'antenna_azimuth', 'antenna_gain', 'antenna_pattern_gain'
@@ -378,7 +379,7 @@ def computeInterferencePpaGwpzPoint(cbsd_grant, constraint, h_inc_ant,
   Returns:
     interference: interference contribution(dBm)
   """
-
+  
   # Get the propagation loss and incident angles for area entity 
   db_loss, incidence_angles, _ = wf_hybrid.CalcHybridPropagationLoss(
                                    cbsd_grant.latitude, cbsd_grant.longitude,
@@ -464,7 +465,7 @@ def computeInterferenceFss(cbsd_grant, constraint, fss_info, max_eirp):
   db_loss, incidence_angles, _ = wf_itm.CalcItmPropagationLoss(cbsd_grant.latitude, 
                                    cbsd_grant.longitude, cbsd_grant.height_agl, 
                                    constraint.latitude, constraint.longitude, 
-                                   fss_info.antenna_height, cbsd_grant.indoor_deployment, 
+                                   fss_info.height_agl, cbsd_grant.indoor_deployment, 
                                    reliability=-1, freq_mhz=FREQ_PROP_MODEL_MHZ)
 
   # Compute CBSD antenna gain in the direction of protection point
@@ -474,9 +475,9 @@ def computeInterferenceFss(cbsd_grant, constraint, fss_info, max_eirp):
 
   # Compute FSS antenna gain in the direction of CBSD
   fss_ant_gain = antenna.GetFssAntennaGains(incidence_angles.hor_rx, 
-                   incidence_angles.ver_rx, fss_info.antenna_azimuth,
-                   fss_info.antenna_elevation, fss_info.antenna_gain,
-                   fss_info.weight1, fss_info.weight2)
+                   incidence_angles.ver_rx, fss_info.pointing_azimuth,
+                   fss_info.pointing_elevation, fss_info.max_gain_dbi,
+                   fss_info.weight_1, fss_info.weight_2)
 
   # Get the total antenna gain by summing the antenna gains from CBSD to FSS
   # and FSS to CBSD
@@ -509,7 +510,7 @@ def computeInterferenceFssBlocking(cbsd_grant, constraint, fss_info, max_eirp):
   db_loss, incidence_angles, _ = wf_itm.CalcItmPropagationLoss(
                                    cbsd_grant.latitude, cbsd_grant.longitude,
                                    cbsd_grant.height_agl, constraint.latitude,
-                                   constraint.longitude, fss_info.antenna_height,
+                                   constraint.longitude, fss_info.height_agl,
                                    cbsd_grant.indoor_deployment, reliability=-1,
                                    freq_mhz=FREQ_PROP_MODEL_MHZ)
 
@@ -520,9 +521,9 @@ def computeInterferenceFssBlocking(cbsd_grant, constraint, fss_info, max_eirp):
 
   # Compute FSS antenna gain in the direction of CBSD
   fss_ant_gain = antenna.GetFssAntennaGains(incidence_angles.hor_rx, 
-                   incidence_angles.ver_rx, fss_info.antenna_azimuth, 
-                   fss_info.antenna_elevation, fss_info.antenna_gain, 
-                   fss_info.weight1, fss_info.weight2)
+                   incidence_angles.ver_rx, fss_info.pointing_azimuth, 
+                   fss_info.pointing_elevation, fss_info.max_gain_dbi, 
+                   fss_info.weight_1, fss_info.weight_2)
 
   # Compute EIRP of CBSD grant inside the frequency range of 
   # protection constraint
