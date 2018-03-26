@@ -1,4 +1,4 @@
-#    Copyright 2016 SAS Project Authors. All Rights Reserved.
+#    Copyright 2018 SAS Project Authors. All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -13,32 +13,32 @@
 #    limitations under the License.
 
 
-# Some parts of this software was developed by employees of 
-# the National Institute of Standards and Technology (NIST), 
-# an agency of the Federal Government. 
-# Pursuant to title 17 United States Code Section 105, works of NIST employees 
-# are not subject to copyright protection in the United States and are 
-# considered to be in the public domain. Permission to freely use, copy, 
-# modify, and distribute this software and its documentation without fee 
-# is hereby granted, provided that this notice and disclaimer of warranty 
+# Some parts of this software was developed by employees of
+# the National Institute of Standards and Technology (NIST),
+# an agency of the Federal Government.
+# Pursuant to title 17 United States Code Section 105, works of NIST employees
+# are not subject to copyright protection in the United States and are
+# considered to be in the public domain. Permission to freely use, copy,
+# modify, and distribute this software and its documentation without fee
+# is hereby granted, provided that this notice and disclaimer of warranty
 # appears in all copies.
 
-# THE SOFTWARE IS PROVIDED 'AS IS' WITHOUT ANY WARRANTY OF ANY KIND, EITHER 
+# THE SOFTWARE IS PROVIDED 'AS IS' WITHOUT ANY WARRANTY OF ANY KIND, EITHER
 # EXPRESSED, IMPLIED, OR STATUTORY, INCLUDING, BUT NOT LIMITED TO, ANY WARRANTY
 # THAT THE SOFTWARE WILL CONFORM TO SPECIFICATIONS, ANY IMPLIED WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND FREEDOM FROM 
-# INFRINGEMENT, AND ANY WARRANTY THAT THE DOCUMENTATION WILL CONFORM TO THE 
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND FREEDOM FROM
+# INFRINGEMENT, AND ANY WARRANTY THAT THE DOCUMENTATION WILL CONFORM TO THE
 # SOFTWARE, OR ANY WARRANTY THAT THE SOFTWARE WILL BE ERROR FREE. IN NO EVENT
-# SHALL NIST BE LIABLE FOR ANY DAMAGES, INCLUDING, BUT NOT LIMITED TO, DIRECT, 
-# INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES, ARISING OUT OF, RESULTING FROM, 
-# OR IN ANY WAY CONNECTED WITH THIS SOFTWARE, WHETHER OR NOT BASED UPON 
+# SHALL NIST BE LIABLE FOR ANY DAMAGES, INCLUDING, BUT NOT LIMITED TO, DIRECT,
+# INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES, ARISING OUT OF, RESULTING FROM,
+# OR IN ANY WAY CONNECTED WITH THIS SOFTWARE, WHETHER OR NOT BASED UPON
 # WARRANTY, CONTRACT, TORT, OR OTHERWISE, WHETHER OR NOT INJURY WAS SUSTAINED
 # BY PERSONS OR PROPERTY OR OTHERWISE, AND WHETHER OR NOT LOSS WAS SUSTAINED
-# FROM, OR AROSE OUT OF THE RESULTS OF, OR USE OF, THE SOFTWARE OR SERVICES 
+# FROM, OR AROSE OUT OF THE RESULTS OF, OR USE OF, THE SOFTWARE OR SERVICES
 # PROVIDED HEREUNDER.
 
-# Distributions of NIST software should also include copyright and licensing 
-# statements of any third-party software that are legally bundled with the 
+# Distributions of NIST software should also include copyright and licensing
+# statements of any third-party software that are legally bundled with the
 # code in compliance with the conditions of those licenses.
 
 """A fake implementation of SasInterface, based on v1.0 of the SAS-CBSD TS.
@@ -136,7 +136,7 @@ class FakeSas(sas_interface.SasInterface):
              'cbsdId': req['cbsdId'],
              'response': self._GetMissingParamResponse()
            })
-        else:   
+        else:
           response['grantResponse'].append({
             'cbsdId': req['cbsdId'],
             'grantId': 'fake_grant_id_%s' % datetime.utcnow().isoformat(),
@@ -181,16 +181,6 @@ class FakeSas(sas_interface.SasInterface):
           'response': self._GetSuccessResponse()
         })
     return response
-
-  def GetSasImplementationRecord(self, request, ssl_cert=None, ssl_key=None):
-    # Get the Sas implementation record
-    impl_record = json.load(
-      open(os.path.join('testcases', 'testdata', 'impl_record_0.json')))
-    if request == impl_record['id']:
-      return impl_record
-    else:
-      # Return Empty if invalid Id
-      return {}
 
   def GetEscSensorRecord(self, request, ssl_cert=None, ssl_key=None):
     # Get the Esc Sensor record
@@ -259,6 +249,9 @@ class FakeSasAdmin(sas_interface.SasAdminInterface):
   def InjectUserId(self, request):
     pass
 
+  def InjectCpiUser(self, request):
+    pass
+
   def BlacklistByFccId(self, request):
     pass
 
@@ -266,6 +259,9 @@ class FakeSasAdmin(sas_interface.SasAdminInterface):
     pass
 
   def PreloadRegistrationData(self, request):
+    pass
+
+  def InjectExclusionZone(self, request, ssl_cert=None, ssl_key=None):
     pass
 
   def InjectZoneData(self, request, ssl_cert=None, ssl_key=None):
@@ -281,9 +277,6 @@ class FakeSasAdmin(sas_interface.SasAdminInterface):
     pass
 
   def InjectSasAdministratorRecord(self, request):
-    pass
-
-  def InjectSasImplementationRecord(self, request):
     pass
 
   def InjectEscSensorDataRecord(self, request):
@@ -305,23 +298,24 @@ class FakeSasAdmin(sas_interface.SasAdminInterface):
   def TriggerDailyActivitiesImmediately(self):
     pass
 
-  def TriggerFullActivityDump(self) :
-    pass
-
+  def QueryPropagationAndAntennaModel(self, request):
+    from testcases.WINNF_FT_S_PAT_testcase import computePropagationAntennaModel
+    return computePropagationAntennaModel(request)
+	
   def GetDailyActivitiesStatus(self):
     return {'completed': True}
 
   def TriggerFullActivityDump(self):
     pass
 
-  def TriggerLoadDpas(self):  
+  def TriggerLoadDpas(self):
     pass
 
   def TriggerBulkDpaActivation(self, request):
     pass
 
   def TriggerDpaActivation(self, request):
-    pass 
+    pass
 
   def TriggerDpaDeactivation(self, request):
     pass
@@ -366,13 +360,20 @@ class FakeSasHandler(BaseHTTPRequestHandler):
       response = FakeSasAdmin().TriggerPpaCreation(request)
     elif self.path == '/admin/get_daily_activities_status':
       response = FakeSasAdmin().GetDailyActivitiesStatus()
+    elif self.path == '/admin/query/propagation_and_antenna_model':
+      try:
+	    response = FakeSasAdmin().QueryPropagationAndAntennaModel(request)
+      except ValueError:
+	    self.send_response(400)
+      return 	  
     elif self.path in ('/admin/reset', '/admin/injectdata/fcc_id',
                        '/admin/injectdata/user_id',
                        '/admin/injectdata/conditional_registration',
                        '/admin/injectdata/blacklist_fcc_id',
                        '/admin/injectdata/blacklist_fcc_id_and_serial_number',
-                       '/admin/injectdata/fss', '/admin/injectdata/wisp',
-                       '/admin/injectdata/cluster_list',
+                       '/admin/injectdata/fss',
+                       '/admin/injectdata/wisp',
+                       '/admin/injectdata/peer_sas',
                        '/admin/injectdata/pal_database_record',
                        '/admin/injectdata/sas_admin',
                        '/admin/injectdata/sas_impl',
@@ -385,9 +386,9 @@ class FakeSasHandler(BaseHTTPRequestHandler):
                        '/admin/trigger/dpa_activation',
                        '/admin/trigger/dpa_deactivation',
                        '/admin/trigger/bulk_dpa_activation',
+                       '/admin/injectdata/exclusion_zone',
                        '/admin/injectdata/database_url',
-                       '/admin/trigger/create_full_activity_dump',
-                       '/admin/injectdata/peer_sas'):
+                       '/admin/trigger/create_full_activity_dump'):
       response = ''
     else:
       self.send_response(404)
@@ -400,9 +401,7 @@ class FakeSasHandler(BaseHTTPRequestHandler):
   def do_GET(self):
     """Handles GET requests."""
     path, value = self._parseUrl(self.path)
-    if path == '%s/sas_impl' % self.version:
-      response = FakeSas().GetSasImplementationRecord(value)
-    elif path == '%s/esc_sensor' % self.version:
+    if path == '%s/esc_sensor' % self.version:
       response = FakeSas().GetEscSensorRecord(value)
     elif path == '%s/dump' % self.version:
       response = FakeSas().GetFullActivityDump(self.version)
@@ -420,12 +419,11 @@ def RunFakeServer(version, is_ecc):
   if is_ecc:
     assert ssl.HAS_ECDH
   server = HTTPServer(('localhost', PORT), FakeSasHandler)
-
   server.socket = ssl.wrap_socket(
       server.socket,
       certfile=ECC_CERT_FILE if is_ecc else CERT_FILE,
       keyfile=ECC_KEY_FILE if is_ecc else KEY_FILE,
-      ca_certs=CA_CERT ,
+      ca_certs=CA_CERT,
       cert_reqs=ssl.CERT_REQUIRED,  # CERT_NONE to disable client certificate check
       ssl_version=ssl.PROTOCOL_TLSv1_2,
       ciphers=':'.join(ECC_CIPHERS if is_ecc else CIPHERS),
@@ -444,5 +442,4 @@ if __name__ == '__main__':
   config_parser.read(['sas.cfg'])
   version = config_parser.get('SasConfig', 'Version')
   RunFakeServer(version, args.ecc)
-
 
